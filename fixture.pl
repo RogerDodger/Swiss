@@ -54,6 +54,7 @@ my $fn = lc ($event->{name} . " round " . $event->{round});
 $fn =~ s/\s+/-/g;
 chdir "/tmp";
 open my $fh, '>', "$fn.tex";
+print STDERR $latex;
 print $fh $latex;
 close $fh;
 system "xelatex $fn.tex";

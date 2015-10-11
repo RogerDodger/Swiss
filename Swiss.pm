@@ -43,9 +43,24 @@ sub event {
 	$self->{event};
 }
 
+sub events {
+	my $self = shift;
+	return $self->_list("events");
+}
+
 sub last_insert_id {
 	my $self = shift;
 	$self->dbh->last_insert_id(undef, undef, shift, "id");
+}
+
+sub matches {
+	my ($self, $id, $round) = @_;
+
+	my $stmt = qq{ SELECT * FROM matches WHERE event_id = ? };
+	$stmt .= q{ AND round = ? } if defined $round;
+	my $sth = $self->_sth($stmt);
+	$sth->execute($id, defined $round ? $round : ());
+	return $sth->fetchall_arrayref({});
 }
 
 sub player {
@@ -53,27 +68,62 @@ sub player {
 	$self->_find("players", $id);
 }
 
+sub players {
+	my ($self, $id) = @_;
+
+	my $sth = $self->_sth(qq{ SELECT * FROM players WHERE event_id = ? });
+	$sth->execute($id);
+	return $sth->fetchall_arrayref({});
+}
+
 sub playerx {
 	my ($self, $id) = @_;
 	$self->_find("playersx", $id);
 }
 
-sub _find {
-	my ($self, $tbl, $id) = @_;
+sub playersx {
+	my ($self, $id) = @_;
+
+	my $sth = $self->_sth(qq{ SELECT * FROM playersx WHERE event_id = ? });
+	$sth->execute($id);
+	return $sth->fetchall_arrayref({});
+}
+
+sub _chk_tblname {
+	my ($self, $tbl) = @_;
 
 	croak "Bad table name" unless grep { $tbl eq $_ }
-		qw/events players playersx matches scores/;
+		qw/events players playersx matches/;
+}
+
+sub _list {
+	my ($self, $tbl) = @_;
+	$self->_chk_tblname($tbl);
+
+	my $sth = $self->_sth(qq{ SELECT * FROM $tbl });
+	$sth->execute;
+	return $sth->fetchall_arrayref({});
+}
+
+sub _find {
+	my ($self, $tbl, $id) = @_;
+	$self->_chk_tblname($tbl);
 
 	my $stmt = qq{ SELECT * FROM $tbl WHERE id = ? };
-	my $sth = $self->{_sth}{$tbl} //= $self->dbh->prepare($stmt);
+	my $sth = $self->{_sth}{"find$tbl"} //= $self->dbh->prepare($stmt);
 	$sth->execute($id);
 
-	if (my $player = $sth->fetchrow_hashref) {
-		return $player;
+	if (my $row = $sth->fetchrow_hashref) {
+		return $row;
 	}
 	else {
 		croak "$tbl($id) not found";
 	}
+}
+
+sub _sth {
+	my ($self, $stmt) = @_;
+	return $self->{_sth}{$stmt} //= $self->dbh->prepare($stmt);
 }
 
 1;
