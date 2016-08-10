@@ -57,8 +57,9 @@ FROM
 CREATE VIEW playersx AS
 SELECT
 	*, (SELECT COUNT(*) FROM _players_owrate o
-			WHERE o.score > me.score
-			OR o.score == me.score AND o.owrate > me.owrate) + 1 AS rank
+			WHERE o.event_id == me.event_id
+			AND (o.score > me.score
+				OR o.score == me.score AND o.owrate > me.owrate)) + 1 AS rank
 FROM
 	_players_owrate me
 ORDER BY
